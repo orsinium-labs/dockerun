@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/orsinium-labs/dockerun/dockerun"
+	"github.com/orsinium-labs/dockerun/dockerun/dockecli"
 	"github.com/spf13/pflag"
 )
 
 func main() {
-	cmd, err := dockerun.GetCommand()
+	cmd, err := dockecli.GetCommand()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

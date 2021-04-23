@@ -1,15 +1,17 @@
-package dockerun
+package dockecli
 
 import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/orsinium-labs/dockerun/dockerun"
 )
 
 type Command func([]string) error
 
 func build(args []string) error {
-	b, err := NewBuilder(args[1:])
+	b, err := dockerun.NewBuilder(args[1:])
 	if err != nil {
 		return fmt.Errorf("cannot init builder: %w", err)
 	}
@@ -29,7 +31,7 @@ func build(args []string) error {
 }
 
 func list(args []string) error {
-	lister, err := NewImages()
+	lister, err := dockerun.NewImages()
 	if err != nil {
 		return fmt.Errorf("cannot init images: %w", err)
 	}
@@ -44,7 +46,7 @@ func list(args []string) error {
 }
 
 func purge(args []string) error {
-	lister, err := NewImages()
+	lister, err := dockerun.NewImages()
 	if err != nil {
 		return fmt.Errorf("cannot init images: %w", err)
 	}
@@ -52,7 +54,7 @@ func purge(args []string) error {
 }
 
 func presets(args []string) error {
-	for name := range Presets {
+	for name := range dockerun.Presets {
 		fmt.Println(name)
 	}
 	return nil
