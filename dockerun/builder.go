@@ -77,7 +77,7 @@ func (b *Builder) Format() error {
 
 func NewBuilder(args []string) (Builder, error) {
 	if len(args) == 0 {
-		return Builder{}, errors.New("preset is required")
+		return Builder{}, errors.New("preset name is required")
 	}
 	presetName := args[0]
 	preset, ok := Presets[presetName]

@@ -1,9 +1,9 @@
 package dockerun
 
 var Presets = map[string]func() Builder{
+	"debian": presetDebian,
 	"go":     presetGo,
 	"python": presetPython,
-	"debian": presetDebian,
 }
 
 func baseBuilder() Builder {

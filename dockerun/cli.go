@@ -51,6 +51,13 @@ func purge(args []string) error {
 	return lister.Purge()
 }
 
+func presets(args []string) error {
+	for name := range Presets {
+		fmt.Println(name)
+	}
+	return nil
+}
+
 func GetCommand() (Command, error) {
 	name := ""
 	if len(os.Args) > 1 {
@@ -63,6 +70,8 @@ func GetCommand() (Command, error) {
 		return list, nil
 	case "purge":
 		return purge, nil
+	case "presets":
+		return presets, nil
 	case "", "--help", "help", "-h":
 		return nil, errors.New("Available commands: install, list")
 	default:
