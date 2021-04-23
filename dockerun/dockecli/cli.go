@@ -2,6 +2,7 @@ package dockecli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/orsinium-labs/dockerun/dockerun"
 	"github.com/spf13/cobra"
@@ -18,9 +19,10 @@ func Root() *cobra.Command {
 		Short: "Install and run CLI tools using Docker",
 	}
 	cmd.AddCommand(&cobra.Command{
-		Use:   "install",
+		Use:   "install PRESET PACKAGE",
+		Args:  cobra.MinimumNArgs(1),
 		Short: "make an image for the given package",
-		RunE:  build,
+		RunE:  install,
 	})
 	cmd.AddCommand(&cobra.Command{
 		Use:   "list",
@@ -40,8 +42,22 @@ func Root() *cobra.Command {
 	return cmd
 }
 
-func build(cmd *cobra.Command, args []string) error {
-	b, err := dockerun.NewBuilder(args[1:])
+func Run() error {
+	cmd := Root()
+	args := make([]string, 0, len(os.Args)+1)
+	if len(os.Args) > 1 {
+		args = append(args, os.Args[1:2]...)
+		if len(os.Args) > 2 && os.Args[2] != "--help" {
+			args = append(args, "--")
+		}
+		args = append(args, os.Args[2:]...)
+	}
+	cmd.SetArgs(args)
+	return cmd.Execute()
+}
+
+func install(cmd *cobra.Command, args []string) error {
+	b, err := dockerun.NewBuilder(args)
 	if err != nil {
 		return fmt.Errorf("cannot init builder: %w", err)
 	}
