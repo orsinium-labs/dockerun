@@ -1,10 +1,10 @@
 package dockecli
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/orsinium-labs/dockerun/dockerun"
+	"github.com/spf13/cobra"
 )
 
 type Command struct {
@@ -12,7 +12,35 @@ type Command struct {
 	Run   func([]string) error
 }
 
-func build(args []string) error {
+func Root() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "dockerun",
+		Short: "Install and run CLI tools using Docker",
+	}
+	cmd.AddCommand(&cobra.Command{
+		Use:   "install",
+		Short: "make an image for the given package",
+		RunE:  build,
+	})
+	cmd.AddCommand(&cobra.Command{
+		Use:   "list",
+		Short: "list installed packages",
+		RunE:  list,
+	})
+	cmd.AddCommand(&cobra.Command{
+		Use:   "purge",
+		Short: "remove all installed packages",
+		RunE:  purge,
+	})
+	cmd.AddCommand(&cobra.Command{
+		Use:   "presets",
+		Short: "list all available presets",
+		RunE:  presets,
+	})
+	return cmd
+}
+
+func build(cmd *cobra.Command, args []string) error {
 	b, err := dockerun.NewBuilder(args[1:])
 	if err != nil {
 		return fmt.Errorf("cannot init builder: %w", err)
@@ -32,7 +60,7 @@ func build(args []string) error {
 	return nil
 }
 
-func list(args []string) error {
+func list(cmd *cobra.Command, args []string) error {
 	lister, err := dockerun.NewImages()
 	if err != nil {
 		return fmt.Errorf("cannot init images: %w", err)
@@ -47,7 +75,7 @@ func list(args []string) error {
 	return nil
 }
 
-func purge(args []string) error {
+func purge(cmd *cobra.Command, args []string) error {
 	lister, err := dockerun.NewImages()
 	if err != nil {
 		return fmt.Errorf("cannot init images: %w", err)
@@ -55,46 +83,9 @@ func purge(args []string) error {
 	return lister.Purge()
 }
 
-func presets(args []string) error {
+func presets(cmd *cobra.Command, args []string) error {
 	for name := range dockerun.Presets {
 		fmt.Println(name)
 	}
 	return nil
-}
-
-func GetCommand(args []string) (Command, error) {
-	name := ""
-	if len(args) > 1 {
-		name = args[1]
-	}
-	switch name {
-	case "build", "install", "i":
-		cmd := Command{
-			Descr: "make an image for the given package",
-			Run:   build,
-		}
-		return cmd, nil
-	case "images", "list", "l":
-		cmd := Command{
-			Descr: "list installed packages",
-			Run:   list,
-		}
-		return cmd, nil
-	case "purge":
-		cmd := Command{
-			Descr: "remove all installed packages",
-			Run:   purge,
-		}
-		return cmd, nil
-	case "presets":
-		cmd := Command{
-			Descr: "list all available presets",
-			Run:   presets,
-		}
-		return cmd, nil
-	case "", "--help", "help", "-h":
-		return Command{}, errors.New("Available commands: install, list")
-	default:
-		return Command{}, fmt.Errorf("Unknown command: %s\n", name)
-	}
 }
