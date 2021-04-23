@@ -1,10 +1,12 @@
 package dockerun
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 
@@ -139,18 +141,32 @@ func (b Builder) Build() error {
 	if err != nil {
 		return fmt.Errorf("parse Dockerfile: %v", err)
 	}
-	buf := bytes.NewBuffer(nil)
-	err = t.Execute(buf, b)
+	dFileBuf := bytes.NewBuffer(nil)
+	err = t.Execute(dFileBuf, b)
 	if err != nil {
 		return fmt.Errorf("generate Dockerfile: %v", err)
 	}
-	fmt.Println(buf.String())
+	fmt.Println(dFileBuf.String())
+
+	// generate tar archive with the file
+	tarHeader := &tar.Header{
+		Name: "Dockerfile",
+		Size: int64(dFileBuf.Len()),
+	}
+	tarBuf := bytes.NewBuffer(nil)
+	tarW := tar.NewWriter(tarBuf)
+	err = tarW.WriteHeader(tarHeader)
+	if err != nil {
+		log.Fatal(err, "write tar header")
+	}
+	_, err = tarW.Write(dFileBuf.Bytes())
+	if err != nil {
+		log.Fatal(err, "write tar body")
+	}
 
 	// build image
 	bopts := b.Docker.Build()
-	bopts.Dockerfile = ""
-	// dfileR :=
-	_, err = cl.ImageBuild(ctx, buf, bopts)
+	_, err = cl.ImageBuild(ctx, tarBuf, bopts)
 	if err != nil {
 		return fmt.Errorf("build image: %v", err)
 	}
