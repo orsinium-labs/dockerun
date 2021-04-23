@@ -42,7 +42,7 @@ func (d DockerConfig) Pull() types.ImagePullOptions {
 
 func (d DockerConfig) Build() types.ImageBuildOptions {
 	return types.ImageBuildOptions{
-		Squash:  true,
+		// Squash:  true,
 		ShmSize: d.ShmSize,
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"strings"
 	"text/template"
 
 	"github.com/docker/docker/client"
@@ -18,7 +18,7 @@ FROM {{.Image}}:{{.Tag}}
 LABEL generated-by="dockerun"
 WORKDIR /opt/
 RUN {{.Install}}
-ENTRYPOINT {{.entrypoint}}
+ENTRYPOINT {{.DEPoint}}
 `
 
 type Builder struct {
@@ -34,6 +34,11 @@ type Builder struct {
 	Logger *zap.Logger
 }
 
+func (b Builder) DEPoint() string {
+	parts := strings.Split(b.EntryPoint, " ")
+	return `["` + strings.Join(parts, `", "`) + `"]`
+}
+
 func (b Builder) format(pattern string) (string, error) {
 	t, err := template.New("_").Parse(pattern)
 	if err != nil {
@@ -47,7 +52,7 @@ func (b Builder) format(pattern string) (string, error) {
 	return w.String(), nil
 }
 
-func (b Builder) Format() error {
+func (b *Builder) Format() error {
 	var err error
 	b.Name, err = b.format(b.Name)
 	if err != nil {
@@ -56,6 +61,10 @@ func (b Builder) Format() error {
 	b.Install, err = b.format(b.Install)
 	if err != nil {
 		return fmt.Errorf("format install: %v", err)
+	}
+	b.EntryPoint, err = b.format(b.EntryPoint)
+	if err != nil {
+		return fmt.Errorf("format entrypoint: %v", err)
 	}
 	return nil
 }
@@ -67,10 +76,7 @@ func NewBuilder(args []string) (Builder, error) {
 	flags := pflag.NewFlagSet("dockerun", pflag.ContinueOnError)
 	var presetName string
 	flags.StringVar(&presetName, "preset", "", "configuration preset to use")
-	err = flags.Parse(args)
-	if err != nil {
-		return Builder{}, err
-	}
+	_ = flags.Parse(args)
 	preset, ok := Presets[presetName]
 	if !ok {
 		return Builder{}, errors.New("preset is not found")
@@ -103,7 +109,14 @@ func (b *Builder) Parse(args []string) error {
 	flags.StringVar(&b.EntryPoint, "entrypoint", b.EntryPoint,
 		"docker entrypoint, the base command to execute")
 	b.Docker.AddFlags(flags)
-	return flags.Parse(args)
+	err := flags.Parse(args)
+	if err != nil {
+		return err
+	}
+	if b.Package == "" {
+		return errors.New("--package is required")
+	}
+	return nil
 }
 
 func (b Builder) Build() error {
@@ -126,22 +139,20 @@ func (b Builder) Build() error {
 	if err != nil {
 		return fmt.Errorf("parse Dockerfile: %v", err)
 	}
-	dfileR, dfileW := io.Pipe()
-	var terr error
-	go func() {
-		terr = t.Execute(dfileW, b)
-		dfileW.Close()
-	}()
+	buf := bytes.NewBuffer(nil)
+	err = t.Execute(buf, b)
+	if err != nil {
+		return fmt.Errorf("generate Dockerfile: %v", err)
+	}
+	fmt.Println(buf.String())
 
 	// build image
 	bopts := b.Docker.Build()
 	bopts.Dockerfile = ""
-	_, err = cl.ImageBuild(ctx, dfileR, bopts)
+	// dfileR :=
+	_, err = cl.ImageBuild(ctx, buf, bopts)
 	if err != nil {
 		return fmt.Errorf("build image: %v", err)
-	}
-	if terr != nil {
-		return fmt.Errorf("generate Dockerfile: %v", terr)
 	}
 
 	return nil

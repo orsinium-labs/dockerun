@@ -9,7 +9,7 @@ func baseBuilder() Builder {
 	return Builder{
 		Prefix:     "_dockerun",
 		Name:       "{{.Prefix}}-{{.Package}}",
-		EntryPoint: "bash -c",
+		EntryPoint: "bash -c {{.Package}}",
 		Docker:     &DockerConfig{},
 	}
 }
