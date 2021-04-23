@@ -29,6 +29,18 @@ func build(args []string) error {
 	return nil
 }
 
+func list(args []string) error {
+	lister := dockerun.NewImages()
+	images, err := lister.List()
+	if err != nil {
+		return err
+	}
+	for _, line := range images {
+		fmt.Println(line)
+	}
+	return nil
+}
+
 func main() {
 	var err error
 	var cmd func([]string) error
@@ -39,8 +51,10 @@ func main() {
 	switch name {
 	case "build", "install", "i":
 		cmd = build
+	case "images", "list", "l":
+		cmd = list
 	case "", "--help", "help", "-h":
-		fmt.Println("Command required. Available commands: install")
+		fmt.Println("Command required. Available commands: install, list")
 		os.Exit(0)
 	default:
 		fmt.Printf("Unknown command: %s\n", name)
