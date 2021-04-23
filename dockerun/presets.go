@@ -7,8 +7,8 @@ var Presets = map[string]func() Builder{
 
 func baseBuilder() Builder {
 	return Builder{
-		Prefix:     "_dockerun",
-		Name:       "{{.Prefix}}-{{.Package}}",
+		Prefix:     "dockerun",
+		Name:       "{{.Prefix}}-{{.Package}}:latest",
 		EntryPoint: "bash -c {{.Package}}",
 		Docker:     &DockerConfig{},
 	}

@@ -30,7 +30,7 @@ func (im Images) List() ([]string, error) {
 
 	// get images
 	filters := filters.NewArgs()
-	filters.Add("label", `generated-by="dockerun"`)
+	filters.Add("label", `generated-by=dockerun`)
 	opts := types.ImageListOptions{Filters: filters}
 	images, err := cl.ImageList(ctx, opts)
 	if err != nil {
@@ -38,7 +38,7 @@ func (im Images) List() ([]string, error) {
 	}
 	result := make([]string, len(images))
 	for i, image := range images {
-		result[i] = image.ID
+		result[i] = image.Labels["package-name"]
 	}
 	return result, nil
 }

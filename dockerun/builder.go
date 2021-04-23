@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"text/template"
 
@@ -18,6 +20,7 @@ import (
 const dockerfile = `
 FROM {{.Image}}:{{.Tag}}
 LABEL generated-by="dockerun"
+LABEL package-name="{{.Package}}"
 WORKDIR /opt/
 RUN {{.Install}}
 ENTRYPOINT {{.DEPoint}}
@@ -32,6 +35,7 @@ type Builder struct {
 	Package    string // package name to install
 	EntryPoint string // comand name to run
 
+	Debug  bool
 	Docker *DockerConfig
 	Logger *zap.Logger
 }
@@ -110,6 +114,8 @@ func (b *Builder) Parse(args []string) error {
 		"package name to install")
 	flags.StringVar(&b.EntryPoint, "entrypoint", b.EntryPoint,
 		"docker entrypoint, the base command to execute")
+	flags.BoolVar(&b.Debug, "debug", b.Debug,
+		"enable debug output")
 	b.Docker.AddFlags(flags)
 	err := flags.Parse(args)
 	if err != nil {
@@ -146,7 +152,9 @@ func (b Builder) Build() error {
 	if err != nil {
 		return fmt.Errorf("generate Dockerfile: %v", err)
 	}
-	fmt.Println(dFileBuf.String())
+	if b.Debug {
+		fmt.Println(dFileBuf.String())
+	}
 
 	// generate tar archive with the file
 	tarHeader := &tar.Header{
@@ -165,8 +173,16 @@ func (b Builder) Build() error {
 	}
 
 	// build image
+	b.Logger.Debug("building image", zap.String("name", b.Name))
 	bopts := b.Docker.Build()
-	_, err = cl.ImageBuild(ctx, tarBuf, bopts)
+	bopts.Tags = []string{b.Name}
+	bresp, err := cl.ImageBuild(ctx, tarBuf, bopts)
+	if b.Debug && bresp.Body != nil {
+		_, err = io.Copy(os.Stdout, bresp.Body)
+		if err != nil {
+			return fmt.Errorf("read build response: %v", err)
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("build image: %v", err)
 	}
