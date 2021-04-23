@@ -29,7 +29,10 @@ func build(args []string) error {
 }
 
 func list(args []string) error {
-	lister := NewImages()
+	lister, err := NewImages()
+	if err != nil {
+		return err
+	}
 	images, err := lister.List()
 	if err != nil {
 		return err
@@ -38,6 +41,14 @@ func list(args []string) error {
 		fmt.Println(line)
 	}
 	return nil
+}
+
+func purge(args []string) error {
+	lister, err := NewImages()
+	if err != nil {
+		return err
+	}
+	return lister.Purge()
 }
 
 func GetCommand() (Command, error) {
@@ -50,6 +61,8 @@ func GetCommand() (Command, error) {
 		return build, nil
 	case "images", "list", "l":
 		return list, nil
+	case "purge":
+		return purge, nil
 	case "", "--help", "help", "-h":
 		return nil, errors.New("Available commands: install, list")
 	default:

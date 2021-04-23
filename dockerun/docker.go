@@ -53,3 +53,7 @@ func (d DockerConfig) Images() types.ImageListOptions {
 	filters.Add("label", `generated-by=dockerun`)
 	return types.ImageListOptions{Filters: filters}
 }
+
+func (d DockerConfig) Remove() types.ImageRemoveOptions {
+	return types.ImageRemoveOptions{Force: true}
+}
