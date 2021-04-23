@@ -9,7 +9,7 @@ import (
 type Command func([]string) error
 
 func build(args []string) error {
-	b, err := NewBuilder(args)
+	b, err := NewBuilder(args[1:])
 	if err != nil {
 		return fmt.Errorf("cannot init builder: %w", err)
 	}
@@ -31,7 +31,7 @@ func build(args []string) error {
 func list(args []string) error {
 	lister, err := NewImages()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot init images: %w", err)
 	}
 	images, err := lister.List()
 	if err != nil {
@@ -46,7 +46,7 @@ func list(args []string) error {
 func purge(args []string) error {
 	lister, err := NewImages()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot init images: %w", err)
 	}
 	return lister.Purge()
 }

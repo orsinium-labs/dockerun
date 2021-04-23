@@ -76,18 +76,16 @@ func (b *Builder) Format() error {
 }
 
 func NewBuilder(args []string) (Builder, error) {
-	var err error
-
-	// get preset
-	flags := pflag.NewFlagSet("dockerun", pflag.ContinueOnError)
-	var presetName string
-	flags.StringVar(&presetName, "preset", "", "configuration preset to use")
-	_ = flags.Parse(args)
+	if len(args) == 0 {
+		return Builder{}, errors.New("preset is required")
+	}
+	presetName := args[0]
 	preset, ok := Presets[presetName]
 	if !ok {
-		return Builder{}, errors.New("preset is not found")
+		return Builder{}, fmt.Errorf("preset %s is not found", presetName)
 	}
 	b := preset()
+	var err error
 	b.Logger, err = zap.NewDevelopment()
 	if err != nil {
 		return Builder{}, fmt.Errorf("create logger: %v", err)
@@ -98,8 +96,6 @@ func NewBuilder(args []string) (Builder, error) {
 func (b *Builder) Parse(args []string) error {
 
 	flags := pflag.NewFlagSet("dockerun", pflag.ContinueOnError)
-	var presetName string
-	flags.StringVar(&presetName, "preset", "", "configuration preset to use")
 	flags.StringVar(&b.Prefix, "prefix", b.Prefix,
 		"prefix to use for the local image name")
 	flags.StringVar(&b.Name, "name", b.Name,
