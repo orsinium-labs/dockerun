@@ -24,13 +24,30 @@ func build(args []string) error {
 	}
 	err = b.Build()
 	if err != nil {
-		return fmt.Errorf("cannot build image: %w", err)
+		return fmt.Errorf("cannot install: %w", err)
 	}
 	return nil
 }
 
 func main() {
-	err := build(os.Args[1:])
+	var err error
+	var cmd func([]string) error
+	name := ""
+	if len(os.Args) > 1 {
+		name = os.Args[1]
+	}
+	switch name {
+	case "build", "install", "i":
+		cmd = build
+	case "", "--help", "help", "-h":
+		fmt.Println("Command required. Available commands: install")
+		os.Exit(0)
+	default:
+		fmt.Printf("Unknown command: %s\n", name)
+		os.Exit(1)
+	}
+
+	err = cmd(os.Args[1:])
 	if errors.Is(err, pflag.ErrHelp) {
 		os.Exit(0)
 	}
