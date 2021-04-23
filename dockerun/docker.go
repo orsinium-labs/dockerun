@@ -55,5 +55,8 @@ func (d DockerConfig) Images() types.ImageListOptions {
 }
 
 func (d DockerConfig) Remove() types.ImageRemoveOptions {
-	return types.ImageRemoveOptions{Force: true}
+	return types.ImageRemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	}
 }

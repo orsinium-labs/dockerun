@@ -106,8 +106,6 @@ func (b *Builder) Parse(args []string) error {
 		"tag (version) of the image to pull")
 	flags.StringVar(&b.Install, "install", b.Install,
 		"command to execute when building the image")
-	flags.StringVar(&b.Package, "package", b.Package,
-		"package name to install")
 	flags.StringVar(&b.EntryPoint, "entrypoint", b.EntryPoint,
 		"docker entrypoint, the base command to execute")
 	flags.BoolVar(&b.Debug, "debug", b.Debug,
@@ -117,8 +115,9 @@ func (b *Builder) Parse(args []string) error {
 	if err != nil {
 		return err
 	}
+	b.Package = flags.Arg(0)
 	if b.Package == "" {
-		return errors.New("--package is required")
+		return errors.New("package name is required")
 	}
 	return nil
 }

@@ -56,7 +56,8 @@ func (im Images) Purge() error {
 	}
 
 	// get images
-	images, err := cl.ImageList(ctx, im.Docker.Images())
+	opts := im.Docker.Images()
+	images, err := cl.ImageList(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("list images: %v", err)
 	}

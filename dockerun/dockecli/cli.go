@@ -61,7 +61,7 @@ func install(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannot init builder: %w", err)
 	}
-	err = b.Parse(args)
+	err = b.Parse(args[1:])
 	if err != nil {
 		return fmt.Errorf("cannot parse flags: %w", err)
 	}
