@@ -3,12 +3,14 @@ package dockecli
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/orsinium-labs/dockerun/dockerun"
 )
 
-type Command func([]string) error
+type Command struct {
+	Descr string
+	Run   func([]string) error
+}
 
 func build(args []string) error {
 	b, err := dockerun.NewBuilder(args[1:])
@@ -60,23 +62,39 @@ func presets(args []string) error {
 	return nil
 }
 
-func GetCommand() (Command, error) {
+func GetCommand(args []string) (Command, error) {
 	name := ""
-	if len(os.Args) > 1 {
-		name = os.Args[1]
+	if len(args) > 1 {
+		name = args[1]
 	}
 	switch name {
 	case "build", "install", "i":
-		return build, nil
+		cmd := Command{
+			Descr: "make an image for the given package",
+			Run:   build,
+		}
+		return cmd, nil
 	case "images", "list", "l":
-		return list, nil
+		cmd := Command{
+			Descr: "list installed packages",
+			Run:   list,
+		}
+		return cmd, nil
 	case "purge":
-		return purge, nil
+		cmd := Command{
+			Descr: "remove all installed packages",
+			Run:   purge,
+		}
+		return cmd, nil
 	case "presets":
-		return presets, nil
+		cmd := Command{
+			Descr: "list all available presets",
+			Run:   presets,
+		}
+		return cmd, nil
 	case "", "--help", "help", "-h":
-		return nil, errors.New("Available commands: install, list")
+		return Command{}, errors.New("Available commands: install, list")
 	default:
-		return nil, fmt.Errorf("Unknown command: %s\n", name)
+		return Command{}, fmt.Errorf("Unknown command: %s\n", name)
 	}
 }
