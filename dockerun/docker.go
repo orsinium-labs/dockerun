@@ -2,6 +2,7 @@ package dockerun
 
 import (
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/spf13/pflag"
 )
@@ -45,4 +46,10 @@ func (d DockerConfig) Build() types.ImageBuildOptions {
 		// Squash:  true,
 		ShmSize: d.ShmSize,
 	}
+}
+
+func (d DockerConfig) Images() types.ImageListOptions {
+	filters := filters.NewArgs()
+	filters.Add("label", `generated-by=dockerun`)
+	return types.ImageListOptions{Filters: filters}
 }

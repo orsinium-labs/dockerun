@@ -3,13 +3,14 @@ package dockerun
 var Presets = map[string]func() Builder{
 	"go":     presetGo,
 	"python": presetPython,
+	"debian": presetDebian,
 }
 
 func baseBuilder() Builder {
 	return Builder{
 		Prefix:     "dockerun",
 		Name:       "{{.Prefix}}-{{.Package}}:latest",
-		EntryPoint: "bash -c {{.Package}}",
+		EntryPoint: "{{.Package}}",
 		Docker:     &DockerConfig{},
 	}
 }
@@ -19,6 +20,14 @@ func presetPython() Builder {
 	c.Image = "python"
 	c.Tag = "3.8"
 	c.Install = "python3 -m pip install {{.Package}}"
+	return c
+}
+
+func presetDebian() Builder {
+	c := baseBuilder()
+	c.Image = "debian"
+	c.Tag = "stretch"
+	c.Install = "apt-get install -y {{.Package}}"
 	return c
 }
 

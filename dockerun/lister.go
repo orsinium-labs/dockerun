@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
@@ -29,10 +27,7 @@ func (im Images) List() ([]string, error) {
 	}
 
 	// get images
-	filters := filters.NewArgs()
-	filters.Add("label", `generated-by=dockerun`)
-	opts := types.ImageListOptions{Filters: filters}
-	images, err := cl.ImageList(ctx, opts)
+	images, err := cl.ImageList(ctx, im.Docker.Images())
 	if err != nil {
 		return nil, fmt.Errorf("list images: %v", err)
 	}
