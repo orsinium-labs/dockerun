@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	err := dockecli.Run()
+	err := dockecli.Root().Execute()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

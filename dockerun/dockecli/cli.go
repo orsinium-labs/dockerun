@@ -14,54 +14,50 @@ type Command struct {
 }
 
 func Root() *cobra.Command {
-	cmd := &cobra.Command{
+	cmdRoot := &cobra.Command{
 		Use:   "dockerun",
 		Short: "install and run CLI tools using Docker",
 	}
 
-	subcmd := &cobra.Command{
+	cmdInstall := &cobra.Command{
 		Use:   "install",
 		Short: "make an image for the given package",
 	}
 	for name, preset := range dockerun.Presets {
-		subcmd.AddCommand(&cobra.Command{
-			Use: fmt.Sprintf("%s PACKAGE", name),
-			// Args:  cobra.MinimumNArgs(1),
+		builder := preset()
+		cmdPreset := &cobra.Command{
+			Use:   fmt.Sprintf("%s PACKAGE", name),
+			Args:  cobra.MinimumNArgs(1),
 			Short: fmt.Sprintf("install %s package", name),
-			RunE:  install(preset),
-		})
+			RunE:  install(&builder),
+		}
+		cmdPreset.Flags().SortFlags = false
+		builder.AddFlags(cmdPreset.Flags())
+		cmdInstall.AddCommand(cmdPreset)
 	}
-	cmd.AddCommand(subcmd)
+	cmdRoot.AddCommand(cmdInstall)
 
-	cmd.AddCommand(&cobra.Command{
+	cmdRoot.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "list installed packages",
 		RunE:  list,
 	})
-	cmd.AddCommand(&cobra.Command{
+	cmdRoot.AddCommand(&cobra.Command{
 		Use:   "purge",
 		Short: "remove all installed packages",
 		RunE:  purge,
 	})
-	return cmd
+	return cmdRoot
 }
 
-func Run() error {
-	return Root().Execute()
-}
-
-func install(preset func() dockerun.Builder) func(*cobra.Command, []string) error {
+func install(b *dockerun.Builder) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		var err error
-		b := preset()
 		b.Logger, err = zap.NewDevelopment()
 		if err != nil {
 			return fmt.Errorf("create logger: %v", err)
 		}
-		err = b.Parse(args)
-		if err != nil {
-			return fmt.Errorf("parse flags: %w", err)
-		}
+		b.Package = args[0]
 		err = b.Format()
 		if err != nil {
 			return fmt.Errorf("format options: %w", err)

@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -75,9 +74,7 @@ func (b *Builder) Format() error {
 	return nil
 }
 
-func (b *Builder) Parse(args []string) error {
-
-	flags := pflag.NewFlagSet("dockerun", pflag.ContinueOnError)
+func (b *Builder) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&b.Prefix, "prefix", b.Prefix,
 		"prefix to use for the local image name")
 	flags.StringVar(&b.Name, "name", b.Name,
@@ -93,15 +90,6 @@ func (b *Builder) Parse(args []string) error {
 	flags.BoolVar(&b.Debug, "debug", b.Debug,
 		"enable debug output")
 	b.Docker.AddFlags(flags)
-	err := flags.Parse(args)
-	if err != nil {
-		return err
-	}
-	b.Package = flags.Arg(0)
-	if b.Package == "" {
-		return errors.New("package name is required")
-	}
-	return nil
 }
 
 func (b Builder) Build() error {
