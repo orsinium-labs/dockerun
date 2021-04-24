@@ -38,6 +38,12 @@ func Root() *cobra.Command {
 	cmdRoot.AddCommand(cmdInstall)
 
 	cmdRoot.AddCommand(&cobra.Command{
+		Use:   "run PACKAGE",
+		Args:  cobra.MinimumNArgs(1),
+		Short: "run a package",
+		RunE:  run,
+	})
+	cmdRoot.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "list installed packages",
 		RunE:  list,
@@ -91,4 +97,12 @@ func purge(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("init images: %w", err)
 	}
 	return lister.Purge()
+}
+
+func run(cmd *cobra.Command, args []string) error {
+	runner, err := dockerun.NewRunner()
+	if err != nil {
+		return fmt.Errorf("init runner: %w", err)
+	}
+	return runner.Run(args[0], args[1:])
 }

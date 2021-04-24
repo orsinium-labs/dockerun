@@ -50,7 +50,7 @@ func (d DockerConfig) Build() types.ImageBuildOptions {
 
 func (d DockerConfig) Images() types.ImageListOptions {
 	filters := filters.NewArgs()
-	filters.Add("label", `generated-by=dockerun`)
+	filters.Add("label", "generated-by=dockerun")
 	return types.ImageListOptions{Filters: filters}
 }
 
