@@ -75,24 +75,6 @@ func (b *Builder) Format() error {
 	return nil
 }
 
-func NewBuilder(args []string) (Builder, error) {
-	if len(args) == 0 {
-		return Builder{}, errors.New("preset name is required")
-	}
-	presetName := args[0]
-	preset, ok := Presets[presetName]
-	if !ok {
-		return Builder{}, fmt.Errorf("preset %s is not found", presetName)
-	}
-	b := preset()
-	var err error
-	b.Logger, err = zap.NewDevelopment()
-	if err != nil {
-		return Builder{}, fmt.Errorf("create logger: %v", err)
-	}
-	return b, nil
-}
-
 func (b *Builder) Parse(args []string) error {
 
 	flags := pflag.NewFlagSet("dockerun", pflag.ContinueOnError)
