@@ -19,7 +19,7 @@ import (
 const dockerfile = `
 FROM {{.Image}}:{{.Tag}}
 LABEL generated-by="dockerun"
-LABEL package-name="{{.Package}}"
+LABEL package-name="{{.Name}}"
 WORKDIR /opt/
 RUN {{.Install}}
 ENTRYPOINT {{.DEPoint}}
@@ -27,7 +27,7 @@ ENTRYPOINT {{.DEPoint}}
 
 type Builder struct {
 	Prefix     string // image name prefix
-	Name       string // image name
+	Name       string // package name to use as label
 	Image      string // base image name
 	Tag        string // base image tag
 	Install    string // command to run when building the container
@@ -78,7 +78,7 @@ func (b *Builder) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&b.Prefix, "prefix", b.Prefix,
 		"prefix to use for the local image name")
 	flags.StringVar(&b.Name, "name", b.Name,
-		"name of the local image")
+		"name of the tool used in run")
 	flags.StringVar(&b.Image, "image", b.Image,
 		"name of the image to pull")
 	flags.StringVar(&b.Tag, "tag", b.Tag,
@@ -140,7 +140,9 @@ func (b Builder) Build() error {
 	// build image
 	b.Logger.Debug("building image", zap.String("name", b.Name))
 	bopts := b.Docker.Build()
-	bopts.Tags = []string{b.Name}
+	bopts.Tags = []string{
+		fmt.Sprintf("%s%s:latest", b.Prefix, b.Name),
+	}
 	bresp, err := cl.ImageBuild(ctx, tarBuf, bopts)
 	if b.Debug && bresp.Body != nil {
 		_, err = io.Copy(os.Stdout, bresp.Body)
