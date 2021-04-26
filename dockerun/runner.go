@@ -31,32 +31,46 @@ func NewRunner() (Runner, error) {
 }
 
 func (runner Runner) Run(name string, args []string) error {
-	var err error
-	ctx := context.Background()
-
 	cl, err := client.NewClientWithOpts(runner.Docker.Client()...)
 	if err != nil {
 		return fmt.Errorf("init Docker client: %v", err)
 	}
+	image, err := runner.getImage(cl, name)
+	if err != nil {
+		return fmt.Errorf("get image: %v", err)
+	}
+	contID, err := runner.makeContainer(cl, image, args)
+	if err != nil {
+		return fmt.Errorf("make container: %v", err)
+	}
+	err = runner.attachContainer(cl, contID)
+	if err != nil {
+		return fmt.Errorf("attach container: %v", err)
+	}
+	return nil
+}
 
-	// get the image
+func (runner Runner) getImage(cl *client.Client, name string) (string, error) {
+	ctx := context.Background()
 	opts := runner.Docker.Images()
 	opts.Filters.Add("label", fmt.Sprintf("package-name=%s", name))
 	images, err := cl.ImageList(ctx, opts)
 	if err != nil {
-		return fmt.Errorf("list images: %v", err)
+		return "", fmt.Errorf("list images: %v", err)
 	}
 	if len(images) == 0 {
-		return errors.New("no matching images found")
+		return "", errors.New("no matching images found")
 	}
 	if len(images) > 1 {
-		return errors.New("more than 1 matching image found")
+		return "", errors.New("more than 1 matching image found")
 	}
-	image := images[0]
+	return images[0].ID, nil
+}
 
-	// create container
+func (runner Runner) makeContainer(cl *client.Client, image string, args []string) (string, error) {
+	ctx := context.Background()
 	conf := container.Config{
-		Image:        image.ID,
+		Image:        image,
 		Cmd:          args,
 		Labels:       map[string]string{"generated-by": "dockerun"},
 		AttachStdout: true,
@@ -65,17 +79,37 @@ func (runner Runner) Run(name string, args []string) error {
 	}
 	resp, err := cl.ContainerCreate(ctx, &conf, nil, nil, nil, "")
 	if err != nil {
-		return fmt.Errorf("create container: %v", err)
+		return "", fmt.Errorf("create container: %v", err)
 	}
 
-	// start container
 	err = cl.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return fmt.Errorf("start container: %v", err)
+		return "", fmt.Errorf("start container: %v", err)
+	}
+
+	return resp.ID, nil
+}
+
+func (runner Runner) attachContainer(cl *client.Client, contID string) error {
+	ctx := context.Background()
+	atopts := types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+	}
+	resp, err := cl.ContainerAttach(ctx, contID, atopts)
+	if err != nil {
+		return fmt.Errorf("attach container: %v", err)
+	}
+	defer resp.Close()
+	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, resp.Reader)
+	if err != nil {
+		return fmt.Errorf("read container stdout: %v", err)
 	}
 
 	// wait for the container to finish
-	statusCh, errCh := cl.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := cl.ContainerWait(ctx, contID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
@@ -83,15 +117,5 @@ func (runner Runner) Run(name string, args []string) error {
 		}
 	case <-statusCh:
 	}
-
-	out, err := cl.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		return fmt.Errorf("read logs: %v", err)
-	}
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-	if err != nil {
-		return fmt.Errorf("write logs: %v", err)
-	}
-
 	return nil
 }
