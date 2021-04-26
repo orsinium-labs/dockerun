@@ -16,12 +16,12 @@ type Command struct {
 func Root() *cobra.Command {
 	cmdRoot := &cobra.Command{
 		Use:   "dockerun",
-		Short: "install and run CLI tools using Docker",
+		Short: "build Docker images for CLI tools",
 	}
 
-	cmdInstall := &cobra.Command{
-		Use:   "install",
-		Short: "make an image for the given package",
+	cmdBuild := &cobra.Command{
+		Use:   "build",
+		Short: "build an image for the given package",
 	}
 	for name, preset := range dockerun.Presets {
 		builder := preset()
@@ -29,20 +29,14 @@ func Root() *cobra.Command {
 			Use:   fmt.Sprintf("%s PACKAGE", name),
 			Args:  cobra.MinimumNArgs(1),
 			Short: fmt.Sprintf("install %s package", name),
-			RunE:  install(&builder),
+			RunE:  build(&builder),
 		}
 		cmdPreset.Flags().SortFlags = false
 		builder.AddFlags(cmdPreset.Flags())
-		cmdInstall.AddCommand(cmdPreset)
+		cmdBuild.AddCommand(cmdPreset)
 	}
-	cmdRoot.AddCommand(cmdInstall)
+	cmdRoot.AddCommand(cmdBuild)
 
-	cmdRoot.AddCommand(&cobra.Command{
-		Use:   "run PACKAGE",
-		Args:  cobra.MinimumNArgs(1),
-		Short: "run a package",
-		RunE:  run,
-	})
 	cmdRoot.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "list installed packages",
@@ -56,7 +50,7 @@ func Root() *cobra.Command {
 	return cmdRoot
 }
 
-func install(b *dockerun.Builder) func(*cobra.Command, []string) error {
+func build(b *dockerun.Builder) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		var err error
 		b.Logger, err = zap.NewDevelopment()
@@ -97,12 +91,4 @@ func purge(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("init images: %w", err)
 	}
 	return lister.Purge()
-}
-
-func run(cmd *cobra.Command, args []string) error {
-	runner, err := dockerun.NewRunner()
-	if err != nil {
-		return fmt.Errorf("init runner: %w", err)
-	}
-	return runner.Run(args[0], args[1:])
 }
