@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"go.uber.org/zap"
 )
 
@@ -39,13 +37,17 @@ func (runner Runner) Run(name string, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get image: %v", err)
 	}
-	contID, err := runner.makeContainer(cl, image, args)
+
+	// using docker sdk to run commands is a lot of hassle
+	cmd := exec.Command("docker", "run", "--rm", "-i", "--init", image)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Args = append(cmd.Args, args...)
+	err = cmd.Run()
 	if err != nil {
-		return fmt.Errorf("make container: %v", err)
-	}
-	err = runner.attachContainer(cl, contID)
-	if err != nil {
-		return fmt.Errorf("attach container: %v", err)
+		return fmt.Errorf("run image: %v", err)
 	}
 	return nil
 }
@@ -65,57 +67,4 @@ func (runner Runner) getImage(cl *client.Client, name string) (string, error) {
 		return "", errors.New("more than 1 matching image found")
 	}
 	return images[0].ID, nil
-}
-
-func (runner Runner) makeContainer(cl *client.Client, image string, args []string) (string, error) {
-	ctx := context.Background()
-	conf := container.Config{
-		Image:        image,
-		Cmd:          args,
-		Labels:       map[string]string{"generated-by": "dockerun"},
-		AttachStdout: true,
-		AttachStderr: true,
-		AttachStdin:  true,
-	}
-	resp, err := cl.ContainerCreate(ctx, &conf, nil, nil, nil, "")
-	if err != nil {
-		return "", fmt.Errorf("create container: %v", err)
-	}
-
-	err = cl.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
-	if err != nil {
-		return "", fmt.Errorf("start container: %v", err)
-	}
-
-	return resp.ID, nil
-}
-
-func (runner Runner) attachContainer(cl *client.Client, contID string) error {
-	ctx := context.Background()
-	atopts := types.ContainerAttachOptions{
-		Stream: true,
-		Stdin:  true,
-		Stdout: true,
-		Stderr: true,
-	}
-	resp, err := cl.ContainerAttach(ctx, contID, atopts)
-	if err != nil {
-		return fmt.Errorf("attach container: %v", err)
-	}
-	defer resp.Close()
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, resp.Reader)
-	if err != nil {
-		return fmt.Errorf("read container stdout: %v", err)
-	}
-
-	// wait for the container to finish
-	statusCh, errCh := cl.ContainerWait(ctx, contID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return fmt.Errorf("wait for container: %v", err)
-		}
-	case <-statusCh:
-	}
-	return nil
 }
