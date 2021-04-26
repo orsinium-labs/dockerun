@@ -19,9 +19,10 @@ import (
 const dockerfile = `
 FROM {{.Image}}:{{.Tag}}
 LABEL generated-by="dockerun"
-LABEL package-name="{{.Name}}"
+LABEL io.whalebrew.name="{{.Name}}"
 WORKDIR /opt/
 RUN {{.Install}}
+WORKDIR /workdir/
 ENTRYPOINT {{.DEPoint}}
 `
 
