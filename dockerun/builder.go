@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -46,7 +45,7 @@ func (b Builder) DEPoint() string {
 }
 
 func (b Builder) format(pattern string) (string, error) {
-	t, err := template.New("_").Parse(pattern)
+	t, err := template.New("_").Funcs(tFuncs).Parse(pattern)
 	if err != nil {
 		return pattern, fmt.Errorf("parse template: %v", err)
 	}
@@ -101,41 +100,13 @@ func (b Builder) Build() error {
 	if err != nil {
 		return fmt.Errorf("init Docker client: %v", err)
 	}
-
-	// pull base image
 	_, err = cl.ImagePull(ctx, fmt.Sprintf("%s:%s", b.Image, b.Tag), b.Docker.Pull())
 	if err != nil {
 		return fmt.Errorf("pull image: %v", err)
 	}
-
-	// generate dockerfile
-	t, err := template.New("Dockerfile").Parse(dockerfile)
+	tarBuf, err := b.layer()
 	if err != nil {
-		return fmt.Errorf("parse Dockerfile: %v", err)
-	}
-	dFileBuf := bytes.NewBuffer(nil)
-	err = t.Execute(dFileBuf, b)
-	if err != nil {
-		return fmt.Errorf("generate Dockerfile: %v", err)
-	}
-	if b.Debug {
-		fmt.Println(dFileBuf.String())
-	}
-
-	// generate tar archive with the file
-	tarHeader := &tar.Header{
-		Name: "Dockerfile",
-		Size: int64(dFileBuf.Len()),
-	}
-	tarBuf := bytes.NewBuffer(nil)
-	tarW := tar.NewWriter(tarBuf)
-	err = tarW.WriteHeader(tarHeader)
-	if err != nil {
-		log.Fatal(err, "write tar header")
-	}
-	_, err = tarW.Write(dFileBuf.Bytes())
-	if err != nil {
-		log.Fatal(err, "write tar body")
+		return fmt.Errorf("build image layer: %v", err)
 	}
 
 	// build image
@@ -154,6 +125,44 @@ func (b Builder) Build() error {
 	if err != nil {
 		return fmt.Errorf("build image: %v", err)
 	}
-
 	return nil
+}
+
+func (b Builder) dockerfile() ([]byte, error) {
+	t, err := template.New("Dockerfile").Parse(dockerfile)
+	if err != nil {
+		return nil, fmt.Errorf("parse Dockerfile: %v", err)
+	}
+	buf := bytes.NewBuffer(nil)
+	err = t.Execute(buf, b)
+	if err != nil {
+		return nil, fmt.Errorf("generate Dockerfile: %v", err)
+	}
+	if b.Debug {
+		fmt.Println(buf.String())
+	}
+	return buf.Bytes(), nil
+}
+
+func (b Builder) layer() (io.Reader, error) {
+	dfile, err := b.dockerfile()
+	if err != nil {
+		return nil, err
+	}
+
+	tarHeader := &tar.Header{
+		Name: "Dockerfile",
+		Size: int64(len(dfile)),
+	}
+	tarBuf := bytes.NewBuffer(nil)
+	tarW := tar.NewWriter(tarBuf)
+	err = tarW.WriteHeader(tarHeader)
+	if err != nil {
+		return nil, fmt.Errorf("write tar header: %v", err)
+	}
+	_, err = tarW.Write(dfile)
+	if err != nil {
+		return nil, fmt.Errorf("write tar body: %v", err)
+	}
+	return tarBuf, nil
 }
